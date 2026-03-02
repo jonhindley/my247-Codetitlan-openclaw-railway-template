@@ -38,6 +38,10 @@
       pairingChannel: '',
       pairingCode: '',
       showPairingModal: false,
+      showDevicesModal: false,
+      devicesLoading: false,
+      devicesPending: [],
+      devicesPaired: [],
       isReady: false,
       tuiEnabled: false,
 
@@ -177,6 +181,60 @@
         }
       },
 
+      async openDevicesModal() {
+        this.showDevicesModal = true;
+        await this.loadDevices();
+      },
+
+      async loadDevices() {
+        this.devicesLoading = true;
+        try {
+          const j = await this.httpJson('/setup/api/devices');
+          const d = j.data;
+          if (Array.isArray(d)) {
+            this.devicesPending = d.filter(x => x.status === 'pending');
+            this.devicesPaired = d.filter(x => x.status !== 'pending');
+          } else if (d && typeof d === 'object') {
+            this.devicesPending = d.pending || d.pendingRequests || d.requests || [];
+            this.devicesPaired = d.paired || d.devices || d.approved || [];
+          } else {
+            this.devicesPending = [];
+            this.devicesPaired = [];
+          }
+          if (j.raw) {
+            this.log += '[devices] ' + j.raw.trim() + '\n';
+          }
+        } catch (e) {
+          this.log += '✗ Failed to load devices: ' + String(e) + '\n';
+        } finally {
+          this.devicesLoading = false;
+        }
+      },
+
+      async approveDevice(requestId) {
+        this.devicesLoading = true;
+        try {
+          const res = await fetch('/setup/api/devices/approve', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(requestId ? { requestId } : {})
+          });
+          const t = await res.text();
+          let j;
+          try { j = JSON.parse(t); } catch (_e) { j = { ok: false, output: t }; }
+          if (j.ok) {
+            this.log += '✓ Device approved\n';
+          } else {
+            this.log += '✗ Approve failed: ' + (j.output || j.error || 'Unknown error') + '\n';
+          }
+          await this.loadDevices();
+        } catch (e) {
+          this.log += '✗ Error: ' + String(e) + '\n';
+          this.devicesLoading = false;
+        }
+      },
+
       async resetSetup() {
         if (!confirm('Reset setup? This deletes the config file so onboarding can run again.')) return;
         this.log = 'Resetting...\n';
@@ -285,10 +343,15 @@
               </div>
               <span class="font-medium text-blue-700 dark:text-blue-300">Approve Pairing</span>
             </div>
-            <p class="text-sm text-blue-600/80 dark:text-blue-400/70 flex-1">Grant DM access to users who have requested pairing on Telegram or Discord.</p>
-            <button @click="openPairingModal()" :disabled="loading" class="w-full mt-4 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded-lg font-medium border border-blue-300 dark:border-blue-700 transition-colors">
-              Approve Pairing
-            </button>
+            <p class="text-sm text-blue-600/80 dark:text-blue-400/70 flex-1">Approve first-time Control UI devices and channel pairing requests.</p>
+            <div class="mt-4 space-y-2">
+              <button @click="openDevicesModal()" :disabled="loading" class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-medium border border-blue-700 transition-colors">
+                Manage Devices
+              </button>
+              <button @click="openPairingModal()" :disabled="loading" class="w-full bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded-lg font-medium border border-blue-300 dark:border-blue-700 transition-colors">
+                Approve Channel Pairing
+              </button>
+            </div>
           </div>
 
           <div class="flex flex-col bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
@@ -456,7 +519,10 @@
               </span>
             </button>
             <button @click="openPairingModal()" :disabled="loading" class="bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-700 dark:text-neutral-300 px-4 py-3 rounded-lg font-medium border border-neutral-300 dark:border-neutral-700 transition-colors">
-              Approve Pairing
+              Approve Channel Pairing
+            </button>
+            <button @click="openDevicesModal()" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-medium border border-blue-700 transition-colors">
+              Manage Devices
             </button>
             <button @click="resetSetup()" :disabled="loading" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-lg font-medium transition-colors">
               Reset
@@ -465,7 +531,7 @@
 
           <div x-show="log" class="bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 font-mono text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="log"></div>
 
-          <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-4">Reset deletes the config file so you can rerun onboarding. Pairing approval grants DM access when dmPolicy=pairing.</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-4">Manage Devices approves first-time web UI devices. Channel pairing grants DM access when dmPolicy=pairing.</p>
         </div>
       </div>
 
@@ -510,6 +576,53 @@
             <button @click="approvePairing()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Approve</button>
             <button @click="showPairingModal = false" class="flex-1 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-4 py-3 rounded-lg font-medium border border-neutral-300 dark:border-neutral-700 transition-colors">Cancel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="showDevicesModal" x-cloak class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" @click.self="showDevicesModal = false">
+      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-xl dark:shadow-none max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Manage Devices</h3>
+          <button @click="loadDevices()" :disabled="devicesLoading" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 disabled:opacity-50">Refresh</button>
+        </div>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Approve first-time browser connections for the Control UI (pairing required).</p>
+
+        <button @click="approveDevice()" :disabled="devicesLoading" class="w-full mb-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-medium transition-colors">
+          <span x-show="!devicesLoading">Approve Latest Request</span>
+          <span x-show="devicesLoading">Loading...</span>
+        </button>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Pending Requests</h4>
+            <div x-show="devicesPending.length === 0 && !devicesLoading" class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 text-sm text-neutral-500 dark:text-neutral-400">No pending requests</div>
+            <div class="space-y-2">
+              <template x-for="req in devicesPending" :key="req.requestId || req.id">
+                <div class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
+                  <p class="text-sm font-medium break-all" x-text="req.requestId || req.id"></p>
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400" x-text="(req.platform || 'unknown') + (req.remoteIp ? ' • ' + req.remoteIp : '')"></p>
+                  <button @click="approveDevice(req.requestId || req.id)" :disabled="devicesLoading" class="mt-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">Approve</button>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Paired Devices</h4>
+            <div x-show="devicesPaired.length === 0 && !devicesLoading" class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 text-sm text-neutral-500 dark:text-neutral-400">No paired devices</div>
+            <div class="space-y-2">
+              <template x-for="dev in devicesPaired" :key="dev.deviceId || dev.id">
+                <div class="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
+                  <p class="text-sm font-medium break-all" x-text="dev.deviceId || dev.id"></p>
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400" x-text="dev.role || 'operator'"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+          <button @click="showDevicesModal = false" class="bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-4 py-2.5 rounded-lg font-medium border border-neutral-300 dark:border-neutral-700 transition-colors">Close</button>
         </div>
       </div>
     </div>
