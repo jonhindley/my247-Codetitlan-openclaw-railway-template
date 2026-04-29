@@ -896,13 +896,15 @@ async function my247AutoApproveFirstDevice() {
         ]),
       );
 
-      if (result.code === 0) {
-        log.info(
-          "my247-pairing",
-          `auto-approved latest device: ${result.output || "(no output)"}`,
-        );
-        break;
-      }
+if (result.code === 0) {
+  log.info(
+    "my247-pairing",
+    `auto-approved latest device: ${result.output || "(no output)"}`,
+  );
+
+  await sleep(MY247_AUTO_APPROVE_INTERVAL_MS);
+  continue;
+}
 
       log.info(
         "my247-pairing",
