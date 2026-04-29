@@ -88,35 +88,28 @@ wizard: {
       },
     },
   },
-
-channels: {
-  whatsapp: {
-    enabled: env("MY247_ENABLE_WHATSAPP", "true") === "true",
-    dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "open"),
-    allowFrom: splitCsv(env("MY247_WHATSAPP_ALLOW_FROM", "*")),
-    groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
-    groupAllowFrom: splitCsv(env("MY247_WHATSAPP_GROUP_ALLOW_FROM", "")),
-    debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
-    accounts: {
-      default: {
-        dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "open"),
-        allowFrom: splitCsv(env("MY247_WHATSAPP_ALLOW_FROM", "*")),
-        groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
-        groupAllowFrom: splitCsv(env("MY247_WHATSAPP_GROUP_ALLOW_FROM", "")),
-        debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+  channels: {
+    whatsapp: {
+      enabled: env("MY247_ENABLE_WHATSAPP", "true") === "true",
+      dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "open"),
+      allowFrom: splitCsv(env("MY247_WHATSAPP_ALLOW_FROM", "*")),
+      groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
+      groupAllowFrom: splitCsv(env("MY247_WHATSAPP_GROUP_ALLOW_FROM", "")),
+      debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+      accounts: {
+        default: {
+          enabled: true,
+          dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "open"),
+          allowFrom: splitCsv(env("MY247_WHATSAPP_ALLOW_FROM", "*")),
+          groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
+          groupAllowFrom: splitCsv(env("MY247_WHATSAPP_GROUP_ALLOW_FROM", "")),
+          debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+        },
       },
-      main: {
-        enabled: true,
-        dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "open"),
-        allowFrom: splitCsv(env("MY247_WHATSAPP_ALLOW_FROM", "*")),
-        groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
-        groupAllowFrom: splitCsv(env("MY247_WHATSAPP_GROUP_ALLOW_FROM", "")),
-        debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
-      },
+      defaultAccountId: env("MY247_WHATSAPP_ACCOUNT", "default"),
+      mediaMaxMb: Number(env("MY247_WHATSAPP_MEDIA_MAX_MB", "50")),
     },
-    mediaMaxMb: Number(env("MY247_WHATSAPP_MEDIA_MAX_MB", "50")),
   },
-},
 
   models: {
     mode: "merge",
