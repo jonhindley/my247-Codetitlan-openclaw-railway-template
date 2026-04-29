@@ -80,6 +80,39 @@ wizard: {
       },
     },
   },
+
+  plugins: {
+    entries: {
+      whatsapp: {
+        enabled: env("MY247_ENABLE_WHATSAPP", "true") === "true",
+      },
+    },
+  },
+
+  channels: {
+    whatsapp: {
+      enabled: env("MY247_ENABLE_WHATSAPP", "true") === "true",
+      dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "pairing"),
+      groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
+      debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+      accounts: {
+        default: {
+          dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "pairing"),
+          groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
+          debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+        },
+        main: {
+          enabled: true,
+          dmPolicy: env("MY247_WHATSAPP_DM_POLICY", "pairing"),
+          groupPolicy: env("MY247_WHATSAPP_GROUP_POLICY", "allowlist"),
+          debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
+        },
+      },
+      mediaMaxMb: Number(env("MY247_WHATSAPP_MEDIA_MAX_MB", "50")),
+    },
+  },
+
+  models: {
   models: {
     mode: "merge",
     providers: {
