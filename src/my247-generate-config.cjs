@@ -113,7 +113,6 @@ wizard: {
   },
 
   models: {
-  models: {
     mode: "merge",
     providers: {
       [providerId]: {
