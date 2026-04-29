@@ -10,6 +10,13 @@ RUN apt-get update \
     python3 \
     build-essential \
     zip \
+    chromium \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libasound2 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g openclaw@2026.3.13 clawhub@latest
