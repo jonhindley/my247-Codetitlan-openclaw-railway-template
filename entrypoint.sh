@@ -13,7 +13,7 @@ ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
 if [ "$MY247_AUTO_CONFIG" = "true" ]; then
   echo "[my247] Auto-config enabled. Generating OpenClaw config..."
-  gosu openclaw node src/my247-generate-config.js
+  gosu openclaw node src/my247-generate-config.cjs
 fi
 
 exec gosu openclaw node src/server.js
