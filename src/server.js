@@ -124,6 +124,18 @@ const TUI_IDLE_TIMEOUT_MS = Number.parseInt(
   process.env.TUI_IDLE_TIMEOUT_MS ?? "300000",
   10,
 );
+const MY247_AUTO_APPROVE_FIRST_DEVICE =
+  process.env.MY247_AUTO_APPROVE_FIRST_DEVICE?.toLowerCase() === "true";
+
+const MY247_AUTO_APPROVE_WINDOW_MS = Number.parseInt(
+  process.env.MY247_AUTO_APPROVE_WINDOW_MS ?? "60000",
+  10,
+);
+
+const MY247_AUTO_APPROVE_INTERVAL_MS = Number.parseInt(
+  process.env.MY247_AUTO_APPROVE_INTERVAL_MS ?? "2000",
+  10,
+);
 const TUI_MAX_SESSION_MS = Number.parseInt(
   process.env.TUI_MAX_SESSION_MS ?? "1800000",
   10,
@@ -857,7 +869,54 @@ app.get("/setup/api/devices", requireSetupAuth, async (_req, res) => {
     return res.json({ ok: result.code === 0, raw: result.output });
   }
 });
+let my247AutoApproveRunning = false;
 
+async function my247AutoApproveFirstDevice() {
+  if (!MY247_AUTO_APPROVE_FIRST_DEVICE) return;
+  if (my247AutoApproveRunning) return;
+
+  my247AutoApproveRunning = true;
+
+  const startedAt = Date.now();
+  log.info(
+    "my247-pairing",
+    `auto-approve enabled for ${MY247_AUTO_APPROVE_WINDOW_MS}ms`,
+  );
+
+  while (Date.now() - startedAt < MY247_AUTO_APPROVE_WINDOW_MS) {
+    try {
+      const result = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs([
+          "devices",
+          "approve",
+          "--latest",
+          "--token",
+          OPENCLAW_GATEWAY_TOKEN,
+        ]),
+      );
+
+      if (result.code === 0) {
+        log.info(
+          "my247-pairing",
+          `auto-approved latest device: ${result.output || "(no output)"}`,
+        );
+        break;
+      }
+
+      log.info(
+        "my247-pairing",
+        `no device approved yet, retrying: exit=${result.code}`,
+      );
+    } catch (err) {
+      log.warn("my247-pairing", `auto-approve error: ${err.message}`);
+    }
+
+    await sleep(MY247_AUTO_APPROVE_INTERVAL_MS);
+  }
+
+  my247AutoApproveRunning = false;
+}
 app.post("/setup/api/devices/approve", requireSetupAuth, async (req, res) => {
   const { requestId } = req.body || {};
   const args = ["devices", "approve"];
@@ -1176,9 +1235,15 @@ app.use(async (req, res) => {
     }
   }
 
-  if (req.path === "/openclaw" && !req.query.token) {
+if (req.path === "/openclaw") {
+  my247AutoApproveFirstDevice().catch((err) => {
+    log.warn("my247-pairing", `auto-approve trigger failed: ${err.message}`);
+  });
+
+  if (!req.query.token) {
     return res.redirect(`/openclaw?token=${OPENCLAW_GATEWAY_TOKEN}`);
   }
+}
 
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
