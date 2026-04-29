@@ -1235,13 +1235,28 @@ app.use(async (req, res) => {
     }
   }
 
-if (req.path === "/openclaw") {
+const controlUiEntryPaths = ["/", "/openclaw", "/chat"];
+
+if (controlUiEntryPaths.includes(req.path)) {
   my247AutoApproveFirstDevice().catch((err) => {
     log.warn("my247-pairing", `auto-approve trigger failed: ${err.message}`);
   });
 
   if (!req.query.token) {
-    return res.redirect(`/openclaw?token=${OPENCLAW_GATEWAY_TOKEN}`);
+    const targetPath = req.path === "/" ? "/openclaw" : req.path;
+    const query = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(req.query)) {
+      if (Array.isArray(value)) {
+        for (const item of value) query.append(key, item);
+      } else if (value !== undefined) {
+        query.set(key, String(value));
+      }
+    }
+
+    query.set("token", OPENCLAW_GATEWAY_TOKEN);
+
+    return res.redirect(`${targetPath}?${query.toString()}`);
   }
 }
 
