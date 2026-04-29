@@ -66,12 +66,12 @@ const config = {
     lastTouchedVersion: "my247-auto-config",
     lastTouchedAt: nowIso(),
   },
-  wizard: {
-    lastRunAt: nowIso(),
-    lastRunVersion: "my247-auto-config",
-    lastRunCommand: "auto-config",
-    lastRunMode: "railway",
-  },
+wizard: {
+  lastRunAt: nowIso(),
+  lastRunVersion: "my247-auto-config",
+  lastRunCommand: "auto-config",
+  lastRunMode: "local",
+},
   auth: {
     profiles: {
       "openai:default": {
