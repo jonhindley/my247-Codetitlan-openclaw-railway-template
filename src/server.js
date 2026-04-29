@@ -1242,11 +1242,13 @@ if (controlUiEntryPaths.includes(req.path)) {
     log.warn("my247-pairing", `auto-approve trigger failed: ${err.message}`);
   });
 
-  if (!req.query.token) {
+  if (!req.query.my247Tokenized) {
     const targetPath = req.path === "/" ? "/openclaw" : req.path;
     const query = new URLSearchParams();
 
     for (const [key, value] of Object.entries(req.query)) {
+      if (key === "token") continue;
+
       if (Array.isArray(value)) {
         for (const item of value) query.append(key, item);
       } else if (value !== undefined) {
@@ -1254,9 +1256,13 @@ if (controlUiEntryPaths.includes(req.path)) {
       }
     }
 
-    query.set("token", OPENCLAW_GATEWAY_TOKEN);
+    query.set("my247Tokenized", "1");
 
-    return res.redirect(`${targetPath}?${query.toString()}`);
+    return res.redirect(
+      `${targetPath}?${query.toString()}#token=${encodeURIComponent(
+        OPENCLAW_GATEWAY_TOKEN,
+      )}`,
+    );
   }
 }
 
