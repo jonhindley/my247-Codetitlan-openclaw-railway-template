@@ -106,7 +106,6 @@ wizard: {
           debounceMs: Number(env("MY247_WHATSAPP_DEBOUNCE_MS", "0")),
         },
       },
-      defaultAccountId: env("MY247_WHATSAPP_ACCOUNT", "default"),
       mediaMaxMb: Number(env("MY247_WHATSAPP_MEDIA_MAX_MB", "50")),
     },
   },
