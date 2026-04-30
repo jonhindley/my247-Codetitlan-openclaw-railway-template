@@ -47,8 +47,8 @@ const allowedOrigins = splitCsv(
 );
 
 if (allowedOrigins.length === 0) {
-  throw new Error(
-    "[my247] Missing MY247_ALLOWED_ORIGIN or MY247_ALLOWED_ORIGINS"
+  console.warn(
+    "[my247] Warning: MY247_ALLOWED_ORIGIN or MY247_ALLOWED_ORIGINS is not set yet. Continuing with empty allowedOrigins for provisioning."
   );
 }
 
