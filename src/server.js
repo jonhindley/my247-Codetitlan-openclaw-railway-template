@@ -32,9 +32,6 @@ const MY247_AUTO_APPROVE_INTERVAL_MS = Number.parseInt(
   10,
 );
 
-const MY247_AUTO_CLICK_CONNECT =
-  process.env.MY247_AUTO_CLICK_CONNECT?.toLowerCase() !== "false";
-
 const LOG_FILE = path.join(STATE_DIR, "server.log");
 const LOG_RING_BUFFER_MAX = 1000;
 const MAX_LOG_FILE_SIZE = 5 * 1024 * 1024;
@@ -312,68 +309,6 @@ function isGatewayStarting() {
 
 function isGatewayReady() {
   return gatewayProc !== null && gatewayStarting === null;
-}
-
-function renderMy247LaunchPage() {
-  const iframeSrc = `/openclaw?my247Tokenized=1#token=${encodeURIComponent(
-    OPENCLAW_GATEWAY_TOKEN,
-  )}`;
-
-  const autoClickScript = MY247_AUTO_CLICK_CONNECT
-    ? `
-      const startedAt = Date.now();
-      const maxMs = 30000;
-
-      const timer = setInterval(() => {
-        try {
-          const doc = frame.contentDocument || frame.contentWindow?.document;
-          if (!doc) return;
-
-          const buttons = Array.from(doc.querySelectorAll("button"));
-          const connectButton = buttons.find((button) =>
-            /connect/i.test(button.textContent || "")
-          );
-
-          if (connectButton) {
-            connectButton.click();
-            clearInterval(timer);
-          }
-
-          if (Date.now() - startedAt > maxMs) {
-            clearInterval(timer);
-          }
-        } catch (err) {
-          clearInterval(timer);
-        }
-      }, 500);
-    `
-    : "";
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>my24-7assistant</title>
-  <style>
-    html, body, iframe {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      border: 0;
-      background: #0b0f14;
-    }
-  </style>
-</head>
-<body>
-  <iframe id="openclaw-frame" src="${iframeSrc}" allow="clipboard-read; clipboard-write"></iframe>
-  <script>
-    const frame = document.getElementById("openclaw-frame");
-    frame.addEventListener("load", () => {
-      ${autoClickScript}
-    });
-  </script>
-</body>
-</html>`;
 }
 
 async function restartGateway() {
@@ -1339,14 +1274,7 @@ app.use(async (req, res) => {
     }
   }
 
-  if (req.path === "/" && !req.query.my247Tokenized) {
-    return res
-      .type("html")
-      .send(renderMy247LaunchPage());
-  }
-
-  const controlUiEntryPaths = ["/openclaw", "/chat"];
-
+  const controlUiEntryPaths = ["/", "/openclaw", "/chat"];
   if (controlUiEntryPaths.includes(req.path)) {
     if (!req.query.my247Tokenized) {
       const targetPath = req.path === "/" ? "/openclaw" : req.path;
