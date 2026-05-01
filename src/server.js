@@ -19,6 +19,18 @@ const WORKSPACE_DIR =
 
 const SETUP_PASSWORD = process.env.SETUP_PASSWORD?.trim();
 
+const MY247_AUTO_APPROVE_FIRST_DEVICE =
+  process.env.MY247_AUTO_APPROVE_FIRST_DEVICE?.toLowerCase() === "true";
+
+const MY247_AUTO_APPROVE_WINDOW_MS = Number.parseInt(
+  process.env.MY247_AUTO_APPROVE_WINDOW_MS ?? "600000",
+  10,
+);
+
+const MY247_AUTO_APPROVE_INTERVAL_MS = Number.parseInt(
+  process.env.MY247_AUTO_APPROVE_INTERVAL_MS ?? "2000",
+  10,
+);
 const LOG_FILE = path.join(STATE_DIR, "server.log");
 const LOG_RING_BUFFER_MAX = 1000;
 const MAX_LOG_FILE_SIZE = 5 * 1024 * 1024;
@@ -949,6 +961,90 @@ app.post("/setup/api/devices/reject", requireSetupAuth, async (req, res) => {
     .json({ ok: result.code === 0, output: result.output });
 });
 
+function extractJsonFromOutput(output) {
+  const jsonMatch = String(output || "").match(/(\{[\s\S]*\}|\[[\s\S]*\])\s*$/);
+  if (!jsonMatch) return null;
+
+  try {
+    return JSON.parse(jsonMatch[1]);
+  } catch {
+    return null;
+  }
+}
+
+async function tryApproveLatestDevice() {
+  const listResult = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["devices", "list", "--json", "--token", OPENCLAW_GATEWAY_TOKEN]),
+  );
+
+  const data = extractJsonFromOutput(listResult.output);
+  const pending = Array.isArray(data?.pending) ? data.pending : [];
+
+  if (pending.length === 0) {
+    return {
+      approved: false,
+      pendingCount: 0,
+    };
+  }
+
+  log.info(
+    "my247-pairing",
+    `pending device(s) detected: ${pending.length}; approving latest`,
+  );
+
+  const approveResult = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["devices", "approve", "--latest", "--token", OPENCLAW_GATEWAY_TOKEN]),
+  );
+
+  log.info(
+    "my247-pairing",
+    `approve latest exit=${approveResult.code} output=${approveResult.output}`,
+  );
+
+  return {
+    approved: approveResult.code === 0,
+    pendingCount: pending.length,
+    output: approveResult.output,
+  };
+}
+
+function startMy247AutoApproveLoop() {
+  if (!MY247_AUTO_APPROVE_FIRST_DEVICE) {
+    log.info("my247-pairing", "auto-approve disabled");
+    return;
+  }
+
+  const startedAt = Date.now();
+
+  log.info(
+    "my247-pairing",
+    `auto-approve enabled for ${MY247_AUTO_APPROVE_WINDOW_MS}ms`,
+  );
+
+  const timer = setInterval(async () => {
+    const elapsed = Date.now() - startedAt;
+
+    if (elapsed > MY247_AUTO_APPROVE_WINDOW_MS) {
+      clearInterval(timer);
+      log.info("my247-pairing", "auto-approve window ended");
+      return;
+    }
+
+    try {
+      const result = await tryApproveLatestDevice();
+
+      if (result.approved) {
+        clearInterval(timer);
+        log.info("my247-pairing", "device approved; stopping auto-approve loop");
+      }
+    } catch (err) {
+      log.warn("my247-pairing", `auto-approve attempt failed: ${err.message}`);
+    }
+  }, MY247_AUTO_APPROVE_INTERVAL_MS);
+}
+
 app.get("/setup/api/export", requireSetupAuth, async (_req, res) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const zipName = `openclaw-export-${timestamp}.zip`;
@@ -1288,11 +1384,10 @@ const server = app.listen(PORT, () => {
         log.warn("wrapper", `doctor --fix failed: ${err.message}`);
       }
       await ensureGatewayRunning();
+      startMy247AutoApproveLoop();
     })().catch((err) => {
       log.error("wrapper", `failed to start gateway at boot: ${err.message}`);
     });
-  }
-});
 
 const tuiWss = createTuiWebSocketServer(server);
 
