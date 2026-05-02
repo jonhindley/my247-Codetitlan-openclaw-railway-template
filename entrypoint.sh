@@ -16,4 +16,16 @@ if [ "$MY247_AUTO_CONFIG" = "true" ]; then
   gosu openclaw node src/my247-generate-config.cjs
 fi
 
+export DISPLAY="${DISPLAY:-:99}"
+export CHROME_BIN="${CHROME_BIN:-/usr/bin/chromium}"
+export CHROMIUM_PATH="${CHROMIUM_PATH:-/usr/bin/chromium}"
+export BROWSER_PATH="${BROWSER_PATH:-/usr/bin/chromium}"
+export OPENCLAW_BROWSER_PATH="${OPENCLAW_BROWSER_PATH:-/usr/bin/chromium}"
+export CHROME_FLAGS="${CHROME_FLAGS:---no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox}"
+
+if command -v Xvfb >/dev/null 2>&1; then
+  echo "[browser] Starting Xvfb on ${DISPLAY}..."
+  Xvfb "${DISPLAY}" -screen 0 1280x720x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
+fi
+
 exec gosu openclaw node src/server.js
