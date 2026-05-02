@@ -16,12 +16,16 @@ if [ "$MY247_AUTO_CONFIG" = "true" ]; then
   gosu openclaw node src/my247-generate-config.cjs
 fi
 
+mkdir -p /data/.openclaw/chromium-profile /tmp/chromium-cache
+chown -R openclaw:openclaw /data/.openclaw /tmp/chromium-cache
+
 export DISPLAY="${DISPLAY:-:99}"
-export CHROME_BIN="${CHROME_BIN:-/usr/bin/chromium}"
-export CHROMIUM_PATH="${CHROMIUM_PATH:-/usr/bin/chromium}"
-export BROWSER_PATH="${BROWSER_PATH:-/usr/bin/chromium}"
-export OPENCLAW_BROWSER_PATH="${OPENCLAW_BROWSER_PATH:-/usr/bin/chromium}"
-export CHROME_FLAGS="${CHROME_FLAGS:---headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222}"
+export CHROME_BIN="${CHROME_BIN:-/usr/local/bin/my247-chromium}"
+export CHROMIUM_PATH="${CHROMIUM_PATH:-/usr/local/bin/my247-chromium}"
+export BROWSER_PATH="${BROWSER_PATH:-/usr/local/bin/my247-chromium}"
+export OPENCLAW_BROWSER_PATH="${OPENCLAW_BROWSER_PATH:-/usr/local/bin/my247-chromium}"
+export CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/data/.openclaw/chromium-profile}"
+export CHROMIUM_CACHE_DIR="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}"
 
 if command -v Xvfb >/dev/null 2>&1; then
   echo "[browser] Starting Xvfb on ${DISPLAY}..."
