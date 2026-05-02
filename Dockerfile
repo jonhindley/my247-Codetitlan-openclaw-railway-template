@@ -26,6 +26,23 @@ RUN npm install -g openclaw@2026.3.13 clawhub@latest
 RUN mkdir -p /openclaw \
   && ln -sfn /usr/local/lib/node_modules/openclaw/dist /openclaw/dist
 
+RUN printf '%s\n' \
+  '#!/bin/sh' \
+  'exec /usr/bin/chromium \' \
+  '  --headless=new \' \
+  '  --no-sandbox \' \
+  '  --disable-dev-shm-usage \' \
+  '  --disable-gpu \' \
+  '  --disable-setuid-sandbox \' \
+  '  --disable-software-rasterizer \' \
+  '  --no-first-run \' \
+  '  --no-default-browser-check \' \
+  '  --user-data-dir="${CHROMIUM_USER_DATA_DIR:-/data/.openclaw/chromium-profile}" \' \
+  '  --disk-cache-dir="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}" \' \
+  '  "$@"' \
+  > /usr/local/bin/my247-chromium \
+  && chmod +x /usr/local/bin/my247-chromium
+
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
