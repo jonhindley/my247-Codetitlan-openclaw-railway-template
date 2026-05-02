@@ -265,10 +265,10 @@ async function startGateway() {
         process.env.OPENCLAW_BROWSER_PATH || "/usr/bin/chromium",
       CHROME_FLAGS:
         process.env.CHROME_FLAGS ||
-        "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox",
+        "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
       OPENCLAW_BROWSER_ARGS:
         process.env.OPENCLAW_BROWSER_ARGS ||
-        "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox",
+        "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
     },
   });
 
