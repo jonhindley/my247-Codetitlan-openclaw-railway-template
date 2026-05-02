@@ -28,6 +28,18 @@ RUN mkdir -p /openclaw \
 
 RUN printf '%s\n' \
   '#!/bin/sh' \
+  'set -eu' \
+  'echo "[my247-chromium] $(date -Iseconds) user=$(whoami) pwd=$(pwd) args=$*" >> /tmp/my247-chromium.log 2>&1 || true' \
+  'export HOME="${HOME:-/home/openclaw}"' \
+  'export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-/data/.openclaw/chromium-config}"' \
+  'export XDG_CACHE_HOME="${XDG_CACHE_HOME:-/tmp/chromium-cache}"' \
+  'export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-openclaw}"' \
+  'export CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/data/.openclaw/chromium-profile}"' \
+  'export CHROMIUM_CACHE_DIR="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}"' \
+  'mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_RUNTIME_DIR" "$CHROMIUM_USER_DATA_DIR" "$CHROMIUM_CACHE_DIR" /tmp/chromium-work' \
+  'chmod 700 "$XDG_RUNTIME_DIR" || true' \
+  'unset DBUS_SESSION_BUS_ADDRESS || true' \
+  'cd /tmp/chromium-work || cd /tmp' \
   'exec /usr/bin/chromium \' \
   '  --headless=new \' \
   '  --no-sandbox \' \
@@ -35,14 +47,17 @@ RUN printf '%s\n' \
   '  --disable-gpu \' \
   '  --disable-setuid-sandbox \' \
   '  --disable-software-rasterizer \' \
+  '  --disable-crash-reporter \' \
+  '  --disable-crashpad \' \
+  '  --disable-extensions \' \
   '  --no-first-run \' \
   '  --no-default-browser-check \' \
-  '  --user-data-dir="${CHROMIUM_USER_DATA_DIR:-/data/.openclaw/chromium-profile}" \' \
-  '  --disk-cache-dir="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}" \' \
+  '  --user-data-dir="$CHROMIUM_USER_DATA_DIR" \' \
+  '  --disk-cache-dir="$CHROMIUM_CACHE_DIR" \' \
   '  "$@"' \
   > /usr/local/bin/my247-chromium \
   && chmod +x /usr/local/bin/my247-chromium
-
+  
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
