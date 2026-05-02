@@ -620,6 +620,25 @@ function runCmd(cmd, args, opts = {}) {
         ...process.env,
         OPENCLAW_STATE_DIR: STATE_DIR,
         OPENCLAW_WORKSPACE_DIR: WORKSPACE_DIR,
+        DISPLAY: process.env.DISPLAY || ":99",
+        CHROME_BIN: process.env.CHROME_BIN || "/usr/local/bin/my247-chromium",
+        CHROMIUM_PATH:
+          process.env.CHROMIUM_PATH || "/usr/local/bin/my247-chromium",
+        BROWSER_PATH:
+          process.env.BROWSER_PATH || "/usr/local/bin/my247-chromium",
+        OPENCLAW_BROWSER_PATH:
+          process.env.OPENCLAW_BROWSER_PATH || "/usr/local/bin/my247-chromium",
+        CHROMIUM_USER_DATA_DIR:
+          process.env.CHROMIUM_USER_DATA_DIR ||
+          "/data/.openclaw/chromium-profile",
+        CHROMIUM_CACHE_DIR:
+          process.env.CHROMIUM_CACHE_DIR || "/tmp/chromium-cache",
+        CHROME_FLAGS:
+          process.env.CHROME_FLAGS ||
+          "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
+        OPENCLAW_BROWSER_ARGS:
+          process.env.OPENCLAW_BROWSER_ARGS ||
+          "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
       },
     });
 
