@@ -11,7 +11,7 @@ RUN apt-get update \
     build-essential \
     zip \
     chromium \
-    xvfb \    
+    xvfb \
     fonts-liberation \
     libnss3 \
     libatk-bridge2.0-0 \
