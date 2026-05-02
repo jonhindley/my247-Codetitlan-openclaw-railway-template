@@ -21,7 +21,7 @@ export CHROME_BIN="${CHROME_BIN:-/usr/bin/chromium}"
 export CHROMIUM_PATH="${CHROMIUM_PATH:-/usr/bin/chromium}"
 export BROWSER_PATH="${BROWSER_PATH:-/usr/bin/chromium}"
 export OPENCLAW_BROWSER_PATH="${OPENCLAW_BROWSER_PATH:-/usr/bin/chromium}"
-export CHROME_FLAGS="${CHROME_FLAGS:---no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox}"
+export CHROME_FLAGS="${CHROME_FLAGS:---headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222}"
 
 if command -v Xvfb >/dev/null 2>&1; then
   echo "[browser] Starting Xvfb on ${DISPLAY}..."
