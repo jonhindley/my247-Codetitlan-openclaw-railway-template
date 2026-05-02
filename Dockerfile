@@ -56,8 +56,11 @@ RUN printf '%s\n' \
   '  --disk-cache-dir="$CHROMIUM_CACHE_DIR" \' \
   '  "$@"' \
   > /usr/local/bin/my247-chromium \
-  && chmod +x /usr/local/bin/my247-chromium
-  
+  && chmod +x /usr/local/bin/my247-chromium \
+  && ln -sfn /usr/local/bin/my247-chromium /usr/local/bin/chromium \
+  && ln -sfn /usr/local/bin/my247-chromium /usr/local/bin/google-chrome \
+  && ln -sfn /usr/local/bin/my247-chromium /usr/local/bin/chrome
+
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
