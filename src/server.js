@@ -269,6 +269,12 @@ async function startGateway() {
         "/data/.openclaw/chromium-profile",
       CHROMIUM_CACHE_DIR:
         process.env.CHROMIUM_CACHE_DIR || "/tmp/chromium-cache",
+      XDG_CONFIG_HOME:
+        process.env.XDG_CONFIG_HOME || "/data/.openclaw/chromium-config",
+      XDG_CACHE_HOME:
+        process.env.XDG_CACHE_HOME || "/tmp/chromium-cache",
+      XDG_RUNTIME_DIR:
+        process.env.XDG_RUNTIME_DIR || "/tmp/runtime-openclaw",
       CHROME_FLAGS:
         process.env.CHROME_FLAGS ||
         "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
@@ -633,6 +639,12 @@ function runCmd(cmd, args, opts = {}) {
           "/data/.openclaw/chromium-profile",
         CHROMIUM_CACHE_DIR:
           process.env.CHROMIUM_CACHE_DIR || "/tmp/chromium-cache",
+        XDG_CONFIG_HOME:
+          process.env.XDG_CONFIG_HOME || "/data/.openclaw/chromium-config",
+        XDG_CACHE_HOME:
+          process.env.XDG_CACHE_HOME || "/tmp/chromium-cache",
+        XDG_RUNTIME_DIR:
+          process.env.XDG_RUNTIME_DIR || "/tmp/runtime-openclaw",
         CHROME_FLAGS:
           process.env.CHROME_FLAGS ||
           "--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox --disable-software-rasterizer --remote-debugging-port=9222",
