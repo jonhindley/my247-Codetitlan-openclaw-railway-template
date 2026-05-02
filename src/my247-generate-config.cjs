@@ -89,6 +89,14 @@ const config = {
     ),
   },
 
+  update: {
+    channel: env("MY247_UPDATE_CHANNEL", "stable"),
+    checkOnStart: env("MY247_UPDATE_CHECK_ON_START", "false") === "true",
+    auto: {
+      enabled: env("MY247_UPDATE_AUTO_ENABLED", "false") === "true",
+    },
+  },
+
   plugins: {
     entries: {
       whatsapp: {
