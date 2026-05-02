@@ -66,12 +66,12 @@ const config = {
     lastTouchedVersion: "my247-auto-config",
     lastTouchedAt: nowIso(),
   },
-wizard: {
-  lastRunAt: nowIso(),
-  lastRunVersion: "my247-auto-config",
-  lastRunCommand: "auto-config",
-  lastRunMode: "local",
-},
+  wizard: {
+    lastRunAt: nowIso(),
+    lastRunVersion: "my247-auto-config",
+    lastRunCommand: "auto-config",
+    lastRunMode: "local",
+  },
   auth: {
     profiles: {
       "openai:default": {
@@ -79,6 +79,14 @@ wizard: {
         mode: "api_key",
       },
     },
+  },
+
+  browser: {
+    noSandbox: env("MY247_BROWSER_NO_SANDBOX", "true") !== "false",
+    executablePath: env(
+      "MY247_BROWSER_EXECUTABLE_PATH",
+      "/usr/local/bin/my247-chromium"
+    ),
   },
 
   plugins: {
