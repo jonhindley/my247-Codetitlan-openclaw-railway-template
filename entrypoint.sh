@@ -16,8 +16,20 @@ if [ "$MY247_AUTO_CONFIG" = "true" ]; then
   gosu openclaw node src/my247-generate-config.cjs
 fi
 
-mkdir -p /data/.openclaw/chromium-profile /tmp/chromium-cache
-chown -R openclaw:openclaw /data/.openclaw /tmp/chromium-cache
+mkdir -p \
+  /data/.openclaw/chromium-profile \
+  /data/.openclaw/chromium-config \
+  /tmp/chromium-cache \
+  /tmp/chromium-work \
+  /tmp/runtime-openclaw
+
+chown -R openclaw:openclaw \
+  /data/.openclaw \
+  /tmp/chromium-cache \
+  /tmp/chromium-work \
+  /tmp/runtime-openclaw
+
+chmod 700 /tmp/runtime-openclaw
 
 export DISPLAY="${DISPLAY:-:99}"
 export CHROME_BIN="${CHROME_BIN:-/usr/local/bin/my247-chromium}"
@@ -26,6 +38,9 @@ export BROWSER_PATH="${BROWSER_PATH:-/usr/local/bin/my247-chromium}"
 export OPENCLAW_BROWSER_PATH="${OPENCLAW_BROWSER_PATH:-/usr/local/bin/my247-chromium}"
 export CHROMIUM_USER_DATA_DIR="${CHROMIUM_USER_DATA_DIR:-/data/.openclaw/chromium-profile}"
 export CHROMIUM_CACHE_DIR="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-/data/.openclaw/chromium-config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-/tmp/chromium-cache}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-openclaw}"
 
 if command -v Xvfb >/dev/null 2>&1; then
   echo "[browser] Starting Xvfb on ${DISPLAY}..."
