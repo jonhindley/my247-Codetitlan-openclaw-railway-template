@@ -23,13 +23,18 @@ const MY247_AUTO_APPROVE_FIRST_DEVICE =
   process.env.MY247_AUTO_APPROVE_FIRST_DEVICE?.toLowerCase() === "true";
 
 const MY247_AUTO_APPROVE_WINDOW_MS = Number.parseInt(
-  process.env.MY247_AUTO_APPROVE_WINDOW_MS ?? "600000",
-  10,
+  process.env.MY247_AUTO_APPROVE_WINDOW_MS ?? "0",
+  10
 );
 
 const MY247_AUTO_APPROVE_INTERVAL_MS = Number.parseInt(
-  process.env.MY247_AUTO_APPROVE_INTERVAL_MS ?? "2000",
-  10,
+  process.env.MY247_AUTO_APPROVE_INTERVAL_MS ?? "3000",
+  10
+);
+
+const MY247_AUTO_APPROVE_MAX_APPROVALS = Number.parseInt(
+  process.env.MY247_AUTO_APPROVE_MAX_APPROVALS ?? "5",
+  10
 );
 
 const LOG_FILE = path.join(STATE_DIR, "server.log");
@@ -957,19 +962,40 @@ function startMy247AutoApproveLoop() {
     return;
   }
 
+  const maxApprovals = Number.isFinite(MY247_AUTO_APPROVE_MAX_APPROVALS)
+    ? Math.max(1, MY247_AUTO_APPROVE_MAX_APPROVALS)
+    : 5;
+
+  const intervalMs = Number.isFinite(MY247_AUTO_APPROVE_INTERVAL_MS)
+    ? Math.max(1000, MY247_AUTO_APPROVE_INTERVAL_MS)
+    : 3000;
+
+  const windowMs = Number.isFinite(MY247_AUTO_APPROVE_WINDOW_MS)
+    ? Math.max(0, MY247_AUTO_APPROVE_WINDOW_MS)
+    : 0;
+
   const startedAt = Date.now();
+  let approvedCount = 0;
+  let stopped = false;
+  let timer = null;
 
   log.info(
     "my247-pairing",
-    `auto-approve enabled for ${MY247_AUTO_APPROVE_WINDOW_MS}ms`,
+    `auto-approve enabled; maxApprovals=${maxApprovals}; intervalMs=${intervalMs}; windowMs=${windowMs || "none"}`,
   );
+  log.info("my247-pairing", "waiting for pending device");
 
-  const timer = setInterval(async () => {
-    const elapsed = Date.now() - startedAt;
+  const stop = () => {
+    stopped = true;
+    if (timer) clearInterval(timer);
+  };
 
-    if (elapsed > MY247_AUTO_APPROVE_WINDOW_MS) {
-      clearInterval(timer);
+  const tick = async () => {
+    if (stopped) return;
+
+    if (windowMs > 0 && Date.now() - startedAt > windowMs) {
       log.info("my247-pairing", "auto-approve window ended");
+      stop();
       return;
     }
 
@@ -977,13 +1003,27 @@ function startMy247AutoApproveLoop() {
       const result = await tryApproveLatestDevice();
 
       if (result.approved) {
-        clearInterval(timer);
-        log.info("my247-pairing", "device approved; stopping auto-approve loop");
+        approvedCount += 1;
+        log.info(
+          "my247-pairing",
+          `approved device ${approvedCount} of ${maxApprovals}`,
+        );
+
+        if (approvedCount >= maxApprovals) {
+          log.info(
+            "my247-pairing",
+            "max approvals reached; stopping auto-approve",
+          );
+          stop();
+        }
       }
     } catch (err) {
       log.warn("my247-pairing", `auto-approve attempt failed: ${err.message}`);
     }
-  }, MY247_AUTO_APPROVE_INTERVAL_MS);
+  };
+
+  timer = setInterval(tick, intervalMs);
+  tick();
 }
 
 app.get("/setup/api/export", requireSetupAuth, async (_req, res) => {
