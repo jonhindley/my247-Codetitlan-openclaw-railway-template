@@ -81,6 +81,21 @@ if (!fs.existsSync(agentsPath)) {
   fs.writeFileSync(agentsPath, defaultAgentInstructions);
   console.log(`[my247] Wrote default agent instructions to ${agentsPath}`);
 }
+
+const memoryPath = path.join(workspace, "MEMORY.md");
+
+const defaultMemory = `# Memory
+
+This file stores durable user and assistant preferences for this my24-7assistant instance.
+
+When the user gives the assistant a name, preference, or long-term instruction, remember it here if possible.
+`;
+
+if (!fs.existsSync(memoryPath)) {
+  fs.writeFileSync(memoryPath, defaultMemory, "utf8");
+  console.log(`[my247] Wrote default memory file to ${memoryPath}`);
+}
+
 if (fs.existsSync(CONFIG_PATH)) {
   const backupPath = `${CONFIG_PATH}.before-my247-${Date.now()}`;
   fs.copyFileSync(CONFIG_PATH, backupPath);
