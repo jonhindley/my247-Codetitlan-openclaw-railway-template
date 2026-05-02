@@ -55,6 +55,32 @@ if (allowedOrigins.length === 0) {
 fs.mkdirSync(CONFIG_DIR, { recursive: true });
 fs.mkdirSync(workspace, { recursive: true });
 
+const agentsPath = path.join(workspace, "AGENTS.md");
+
+const defaultAgentInstructions = `# my24-7assistant operating instructions
+
+## Session Startup
+
+Follow these hosted-environment rules unless the user explicitly tells you otherwise.
+
+## Browser and web page access
+
+When asked to browse, open a website, inspect a page, check a URL, or use the web, use the real OpenClaw browser CLI:
+
+- \`openclaw browser open <url>\`
+- \`openclaw browser snapshot\`
+
+Do not run \`browser-control\`; that command is not installed.
+
+For simple page retrieval, \`chromium --dump-dom <url>\` is also available.
+
+If a web search provider such as Brave Search is not configured, say so clearly and use browser navigation or direct page access where possible.
+`;
+
+if (!fs.existsSync(agentsPath)) {
+  fs.writeFileSync(agentsPath, defaultAgentInstructions);
+  console.log(`[my247] Wrote default agent instructions to ${agentsPath}`);
+}
 if (fs.existsSync(CONFIG_PATH)) {
   const backupPath = `${CONFIG_PATH}.before-my247-${Date.now()}`;
   fs.copyFileSync(CONFIG_PATH, backupPath);
