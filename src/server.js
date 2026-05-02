@@ -257,6 +257,18 @@ async function startGateway() {
       ...process.env,
       OPENCLAW_STATE_DIR: STATE_DIR,
       OPENCLAW_WORKSPACE_DIR: WORKSPACE_DIR,
+      DISPLAY: process.env.DISPLAY || ":99",
+      CHROME_BIN: process.env.CHROME_BIN || "/usr/bin/chromium",
+      CHROMIUM_PATH: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
+      BROWSER_PATH: process.env.BROWSER_PATH || "/usr/bin/chromium",
+      OPENCLAW_BROWSER_PATH:
+        process.env.OPENCLAW_BROWSER_PATH || "/usr/bin/chromium",
+      CHROME_FLAGS:
+        process.env.CHROME_FLAGS ||
+        "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox",
+      OPENCLAW_BROWSER_ARGS:
+        process.env.OPENCLAW_BROWSER_ARGS ||
+        "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox",
     },
   });
 
