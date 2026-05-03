@@ -63,6 +63,16 @@ const defaultAgentInstructions = `# my24-7assistant operating instructions
 
 Follow these hosted-environment rules unless the user explicitly tells you otherwise.
 
+## Memory and identity
+
+Use /data/workspace/MEMORY.md as the durable fallback memory source.
+
+Before answering questions about your name, the user, preferences, standing instructions, or prior setup, check /data/workspace/MEMORY.md directly if memory_search is unavailable or fails.
+
+If memory_search fails because of an embeddings, API-key, or provider error, do not tell the user "memory is unavailable" as the final answer. First check MEMORY.md directly. If MEMORY.md is readable, answer from it.
+
+Only mention memory_search errors if the user explicitly asks for diagnostics.
+
 ## Browser and web page access
 
 When asked to browse, open a website, inspect a page, check a URL, or use the web, use the real OpenClaw browser CLI:
