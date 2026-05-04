@@ -86,6 +86,80 @@ const log = {
   error: (category, message) => writeLog("ERROR", category, message),
 };
 
+function my247Env(name) {
+  return process.env[name]?.trim() || "";
+}
+
+function seedMy247WorkspaceFiles(reason = "startup") {
+  try {
+    fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
+
+    const assistantName = my247Env("MY247_ASSISTANT_NAME");
+    const customerName = my247Env("MY247_CUSTOMER_NAME");
+    const customerEmail = my247Env("MY247_CUSTOMER_EMAIL");
+    const owner = customerName || "the customer";
+
+    fs.writeFileSync(path.join(WORKSPACE_DIR, "AGENTS.md"), `# my24-7assistant operating instructions
+
+## Session Startup
+
+Before answering questions about your name, identity, the user, preferences, standing instructions, or prior setup, check these files directly:
+
+- /data/workspace/SOUL.md
+- /data/workspace/IDENTITY.md
+- /data/workspace/USER.md
+- /data/workspace/MEMORY.md
+- /data/workspace/TOOLS.md
+
+Use SOUL.md and IDENTITY.md for your assistant name, persona, and tone.
+Use USER.md for the owner's profile.
+Use MEMORY.md as durable fallback memory.
+
+If memory_search fails because of an embeddings, API-key, provider, or 401 error, first check the workspace files directly.
+
+When browsing, use openclaw browser open <url> and openclaw browser snapshot. Do not use browser-control.
+`, "utf8");
+
+    if (assistantName) {
+      fs.writeFileSync(path.join(WORKSPACE_DIR, "SOUL.md"), `# SOUL.md - Assistant Persona
+
+Your name is ${assistantName}.
+
+You are ${owner}'s my24-7assistant: practical, concise, helpful, and reliable.
+
+When asked your name, answer that your name is ${assistantName}.
+`, "utf8");
+
+      fs.writeFileSync(path.join(WORKSPACE_DIR, "IDENTITY.md"), `# IDENTITY.md - Who Am I?
+
+- **Name:** ${assistantName}
+- **Creature:** AI assistant
+- **Vibe:** practical, concise, helpful, calm, and reliable
+- **Emoji:** 🦋
+- **Avatar:**
+
+You are ${assistantName}, ${owner}'s my24-7assistant.
+
+When asked your name, answer: My name is ${assistantName}.
+`, "utf8");
+    }
+
+    if (customerName || customerEmail) {
+      fs.writeFileSync(path.join(WORKSPACE_DIR, "USER.md"), `# USER.md - User Profile
+
+- Name: ${customerName}
+- Preferred address: ${customerName ? customerName.split(" ")[0] : ""}
+- Email: ${customerEmail}
+- Notes:
+`, "utf8");
+    }
+
+    log.info("my247-workspace", `workspace bootstrap complete (${reason})`);
+  } catch (err) {
+    log.warn("my247-workspace", `workspace bootstrap failed (${reason}): ${err.message}`);
+  }
+}
+
 function resolveGatewayToken() {
   const envTok = process.env.OPENCLAW_GATEWAY_TOKEN?.trim();
   if (envTok) return envTok;
@@ -1405,6 +1479,7 @@ const server = app.listen(PORT, () => {
         const dr = await runCmd(OPENCLAW_NODE, clawArgs(["doctor", "--fix"]));
         log.info("wrapper", `doctor --fix exit=${dr.code}`);
         if (dr.output) log.info("wrapper", dr.output);
+        seedMy247WorkspaceFiles("post-doctor");
       } catch (err) {
         log.warn("wrapper", `doctor --fix failed: ${err.message}`);
       }
