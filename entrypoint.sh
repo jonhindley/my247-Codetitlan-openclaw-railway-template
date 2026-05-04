@@ -1,8 +1,15 @@
 #!/bin/bash
 set -e
 
+# Ensure all persistent OpenClaw state is readable/writable by the runtime user.
+# This is required for WhatsApp credentials, cron jobs, memory, sessions, and workspace files
+# to survive redeploys and be loaded by the gateway.
 chown -R openclaw:openclaw /data
 chmod 700 /data
+chmod 700 /data/.openclaw 2>/dev/null || true
+chmod 700 /data/.openclaw/credentials 2>/dev/null || true
+chmod 700 /data/.openclaw/credentials/whatsapp 2>/dev/null || true
+chmod 700 /data/.openclaw/credentials/whatsapp/default 2>/dev/null || true
 
 if [ ! -d /data/.linuxbrew ]; then
   cp -a /home/linuxbrew/.linuxbrew /data/.linuxbrew
