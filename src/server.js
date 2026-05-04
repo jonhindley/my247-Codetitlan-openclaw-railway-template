@@ -114,8 +114,33 @@ Before answering questions about your name, identity, the user, preferences, sta
 Use SOUL.md and IDENTITY.md for your assistant name, persona, and tone.
 Use USER.md for the owner's profile.
 Use MEMORY.md as durable fallback memory.
+Use TASKS.md as a durable record of requested recurring tasks until a real scheduler is available.
+
+## Durable self-configuration
+
+When the user gives you durable information, update the appropriate workspace file without requiring Terminal access:
+
+- Assistant name, personality, tone, or identity: update /data/workspace/SOUL.md and /data/workspace/IDENTITY.md
+- Owner name, profile, preferences, location, or contact details: update /data/workspace/USER.md
+- Long-term facts, preferences, decisions, and useful context: update /data/workspace/MEMORY.md
+- Standing instructions about how to work, answer, browse, or behave: update /data/workspace/AGENTS.md carefully, preserving existing rules
+- Recurring task requests such as daily weather, reminders, or summaries: record them in /data/workspace/TASKS.md
+
+After updating a durable file, confirm what you changed and where you stored it.
 
 If memory_search fails because of an embeddings, API-key, provider, or 401 error, first check the workspace files directly.
+
+Do not ask the user to repeat durable information until you have checked the relevant workspace files.
+
+## Recurring tasks
+
+If the user asks for a scheduled or recurring task, record the request in TASKS.md.
+
+Do not claim the task will definitely run automatically unless a real scheduler, cron, heartbeat, or my24-7assistant task runner is available and confirmed.
+
+If scheduling is not available, say clearly that you have recorded the requested task but automatic execution still needs to be enabled.
+
+## Browser and web page access
 
 When browsing, use openclaw browser open <url> and openclaw browser snapshot. Do not use browser-control.
 `, "utf8");
@@ -151,6 +176,21 @@ When asked your name, answer: My name is ${assistantName}.
 - Preferred address: ${customerName ? customerName.split(" ")[0] : ""}
 - Email: ${customerEmail}
 - Notes:
+`, "utf8");
+    }
+
+    const tasksPath = path.join(WORKSPACE_DIR, "TASKS.md");
+    if (!fs.existsSync(tasksPath)) {
+      fs.writeFileSync(tasksPath, `# TASKS.md - Recurring and Scheduled Task Requests
+
+This file records recurring or scheduled tasks requested by the user.
+
+Important:
+- A task listed here is a durable request.
+- Do not claim it will run automatically unless a real scheduler, cron, heartbeat, or my24-7assistant task runner is available and confirmed.
+
+## Requested tasks
+
 `, "utf8");
     }
 
