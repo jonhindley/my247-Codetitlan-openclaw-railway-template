@@ -92,6 +92,57 @@ if (!fs.existsSync(agentsPath)) {
   console.log(`[my247] Wrote default agent instructions to ${agentsPath}`);
 }
 
+const soulPath = path.join(workspace, "SOUL.md");
+
+const defaultSoul = `# SOUL.md - Assistant Persona
+
+You are a my24-7assistant: practical, concise, helpful, and reliable.
+
+If the customer gives you a specific name, that name should be stored here and used as your assistant identity.
+
+Avoid stiff, generic replies. Be useful, calm, and clear.
+`;
+
+if (!fs.existsSync(soulPath)) {
+  fs.writeFileSync(soulPath, defaultSoul, "utf8");
+  console.log(`[my247] Wrote default soul file to ${soulPath}`);
+}
+
+const userPath = path.join(workspace, "USER.md");
+
+const defaultUser = `# USER.md - User Profile
+
+- Name:
+- Preferred address:
+- Email:
+- Notes:
+`;
+
+if (!fs.existsSync(userPath)) {
+  fs.writeFileSync(userPath, defaultUser, "utf8");
+  console.log(`[my247] Wrote default user profile file to ${userPath}`);
+}
+
+const toolsPath = path.join(workspace, "TOOLS.md");
+
+const defaultTools = `# TOOLS.md - Tool Notes
+
+Browser and web page access:
+- Use \`openclaw browser open <url>\` to open a page.
+- Use \`openclaw browser snapshot\` to inspect the current page.
+- Do not use \`browser-control\`; that command is not installed.
+- If Brave Search or another search provider is unavailable, use browser navigation or direct page access where possible.
+
+Memory and identity:
+- Use MEMORY.md as durable fallback memory.
+- Use SOUL.md for assistant persona, name, and tone.
+- Use USER.md for the owner's profile.
+`;
+
+if (!fs.existsSync(toolsPath)) {
+  fs.writeFileSync(toolsPath, defaultTools, "utf8");
+  console.log(`[my247] Wrote default tool notes file to ${toolsPath}`);
+}
 const memoryPath = path.join(workspace, "MEMORY.md");
 
 const defaultMemory = `# Memory
