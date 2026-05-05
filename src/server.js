@@ -1516,7 +1516,13 @@ function startWhatsappLoginProcess() {
     clawArgs(["channels", "login", "--channel", "whatsapp"]).map((x) => JSON.stringify(x)).join(" "),
   ].join(" ");
 
-  const proc = pty.spawn("su", ["-s", "/bin/bash", "openclaw", "-c", loginCommand], {
+  const runAsRoot = typeof process.getuid === "function" && process.getuid() === 0;
+  const spawnCmd = runAsRoot ? "su" : "bash";
+  const spawnArgs = runAsRoot
+    ? ["-s", "/bin/bash", "openclaw", "-c", loginCommand]
+    : ["-lc", loginCommand];
+
+  const proc = pty.spawn(spawnCmd, spawnArgs, {
     name: "xterm-color",
     cols: 96,
     rows: 48,
