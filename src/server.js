@@ -1458,8 +1458,14 @@ function htmlEscape(value) {
     .replaceAll("'", "&#39;");
 }
 
+function sanitizeTerminalOutput(value) {
+  return String(value ?? "")
+    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "")
+    .replace(/\[(?:\d{1,3})(?:;\d{1,3})*m/g, "");
+}
+
 function whatsappStatusFromOutput(output) {
-  const text = String(output || "");
+  const text = sanitizeTerminalOutput(output);
   return {
     raw: text,
     connected: /linked,\s*running,\s*connected/i.test(text),
@@ -1540,7 +1546,7 @@ function startWhatsappLoginProcess() {
   whatsappLinkState.proc = proc;
 
   proc.onData((data) => {
-    whatsappLinkState.output += data;
+    whatsappLinkState.output += sanitizeTerminalOutput(data);
     if (whatsappLinkState.output.length > 80_000) {
       whatsappLinkState.output = whatsappLinkState.output.slice(-80_000);
     }
@@ -1596,7 +1602,7 @@ app.get("/my247/whatsapp", (_req, res) => {
     <div id="status" class="status">Checking status…</div>
 
     <button class="primary" onclick="startLink()">Start WhatsApp linking</button>
-    <button class="secondary" onclick="finalize()">Finalise connection</button>
+    <!-- Finalise runs automatically after the QR is scanned. -->
     <button class="danger" onclick="resetLink()">Reset WhatsApp link</button>
 
     <p class="small">If the QR has expired, click Reset, then Start again. Do not use the raw Channels page.</p>
@@ -1625,12 +1631,28 @@ function setStatus(data) {
   }
 }
 
+let finaliseInFlight = false;
+
 async function refresh() {
   try {
     const data = await api("/my247/whatsapp/api/status");
-    setStatus(data.status || data);
-    document.getElementById("output").textContent = data.login?.output || data.status?.raw || "Waiting…";
-    if (data.login?.finishedAt && (data.login.output || "").includes("Linked after restart")) {
+    const status = data.status || {};
+    const login = data.login || {};
+    const outputEl = document.getElementById("output");
+
+    setStatus(status);
+
+    if (status.connected) {
+      outputEl.textContent =
+        "WhatsApp connected. You can now message your assistant.\n\n" +
+        (status.raw || "");
+      return;
+    }
+
+    outputEl.textContent = login.output || status.raw || "Waiting…";
+
+    const linkedAfterRestart = (login.output || "").includes("Linked after restart");
+    if (login.finishedAt && linkedAfterRestart && !finaliseInFlight) {
       await finalize();
     }
   } catch (e) {
@@ -1640,6 +1662,7 @@ async function refresh() {
 }
 
 async function startLink() {
+  finaliseInFlight = false;
   document.getElementById("output").textContent = "Starting WhatsApp linking…";
   await api("/my247/whatsapp/api/start", { method: "POST" });
   refresh();
@@ -1647,14 +1670,26 @@ async function startLink() {
 
 async function resetLink() {
   if (!confirm("Reset WhatsApp link and remove saved credentials?")) return;
-  document.getElementById("output").textContent = "Resetting…";
+  finaliseInFlight = false;
+  document.getElementById("status").className = "status";
+  document.getElementById("status").textContent = "Resetting WhatsApp link…";
+  document.getElementById("output").textContent = "Resetting WhatsApp link…";
   await api("/my247/whatsapp/api/reset", { method: "POST" });
+  document.getElementById("output").textContent =
+    "WhatsApp link reset. Click Start WhatsApp linking to generate a new QR.";
   refresh();
 }
 
 async function finalize() {
-  document.getElementById("output").textContent += "\\n\\nFinalising connection…";
-  await api("/my247/whatsapp/api/finalize", { method: "POST" });
+  if (finaliseInFlight) return;
+  finaliseInFlight = true;
+  document.getElementById("status").className = "status warn";
+  document.getElementById("status").textContent = "Finalising WhatsApp connection…";
+  try {
+    await api("/my247/whatsapp/api/finalize", { method: "POST" });
+  } finally {
+    finaliseInFlight = false;
+  }
   refresh();
 }
 
@@ -1673,7 +1708,9 @@ app.get("/my247/whatsapp/api/status", async (_req, res) => {
       status,
       login: {
         running: Boolean(whatsappLinkState.proc),
-        output: whatsappLinkState.output,
+        output: status.connected
+          ? "WhatsApp connected. You can now message your assistant."
+          : sanitizeTerminalOutput(whatsappLinkState.output),
         startedAt: whatsappLinkState.startedAt,
         finishedAt: whatsappLinkState.finishedAt,
         exitCode: whatsappLinkState.exitCode,
@@ -1692,7 +1729,12 @@ app.post("/my247/whatsapp/api/reset", async (_req, res) => {
       whatsappLinkState.proc = null;
     }
     const result = await resetWhatsappCredentials();
-    res.json({ ok: result.code === 0, code: result.code, output: result.output });
+    whatsappLinkState.output = "WhatsApp link reset. Click Start WhatsApp linking to generate a new QR.";
+    whatsappLinkState.startedAt = null;
+    whatsappLinkState.finishedAt = null;
+    whatsappLinkState.exitCode = null;
+    whatsappLinkState.error = null;
+    res.json({ ok: result.code === 0, code: result.code, output: sanitizeTerminalOutput(result.output) });
   } catch (error) {
     res.status(500).json({ ok: false, error: error.message });
   }
