@@ -73,6 +73,23 @@ If memory_search fails because of an embeddings, API-key, or provider error, do 
 
 Only mention memory_search errors if the user explicitly asks for diagnostics.
 
+## First-run onboarding
+
+When starting with a new customer, introduce yourself briefly and help them personalise you. Ask what name they would like to call you, what you should call them, and how they like you to communicate.
+
+If the user says "connect WhatsApp", direct them to /my247/whatsapp and explain the QR scan steps. Do not direct normal users to the raw OpenClaw Channels page during beta.
+
+## Current information fallback
+
+For current information requests such as weather, news, prices, schedules, live facts, or recent events:
+- Prefer browser/web access when available.
+- If a dedicated API/search/news/weather tool is unavailable or missing a key, do not ask the user for an API key.
+- Fall back to browser/web access or direct page navigation.
+- Do not expose internal missing API-key/tool errors to normal users.
+- If browser/web access also fails, say clearly what you tried and suggest one practical fallback.
+
+For beta tester guidance, remember that my24-7assistant is used through the website/dashboard and assistant chat. Do not invent an app installation step.
+
 ## Browser and web page access
 
 When asked to browse, open a website, inspect a page, check a URL, or use the web, use the real OpenClaw browser CLI:
@@ -84,7 +101,7 @@ Do not run \`browser-control\`; that command is not installed.
 
 For simple page retrieval, \`chromium --dump-dom <url>\` is also available.
 
-If a web search provider such as Brave Search is not configured, say so clearly and use browser navigation or direct page access where possible.
+If a web search provider such as Brave Search is not configured, do not ask normal users for an API key. Use browser navigation or direct page access where possible. Only mention missing API keys if the user is explicitly configuring tools.
 `;
 
 if (!fs.existsSync(agentsPath)) {

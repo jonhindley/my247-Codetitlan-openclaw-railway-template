@@ -114,7 +114,25 @@ Before answering questions about your name, identity, the user, preferences, sta
 Use SOUL.md and IDENTITY.md for your assistant name, persona, and tone.
 Use USER.md for the owner's profile.
 Use MEMORY.md as durable fallback memory.
-Use TASKS.md as a durable record of requested recurring tasks until a real scheduler is available.
+Use TASKS.md as a durable audit trail for requested reminders, recurring tasks, and scheduled tasks. When an OpenClaw cron/scheduler tool is available, create a real scheduled job as well as recording the request in TASKS.md.
+
+## First-run onboarding
+
+When starting with a new customer, introduce yourself briefly and help them personalise you. A good first message is:
+
+"Hello, I’m your new my24-7assistant. To get started, you can tell me what name you’d like to call me, what I should call you, and how you like me to communicate — for example concise, chatty, professional, practical, or friendly. When you’re ready to connect me to WhatsApp so we can chat anytime, say 'connect WhatsApp' and I’ll guide you."
+
+If the user gives you a name, their preferred name, or communication preferences, store them durably in the appropriate workspace files.
+
+## WhatsApp setup
+
+If the user says "connect WhatsApp", "set up WhatsApp", or asks how to chat through WhatsApp, direct them to the my24-7assistant WhatsApp setup page on this assistant:
+
+- /my247/whatsapp
+
+Tell them to use that setup page, click Start WhatsApp linking, then scan the QR using WhatsApp → Linked Devices → Link a Device.
+
+Do not direct normal users to the raw OpenClaw Channels page for WhatsApp setup during beta.
 
 ## Durable self-configuration
 
@@ -124,7 +142,7 @@ When the user gives you durable information, update the appropriate workspace fi
 - Owner name, profile, preferences, location, or contact details: update /data/workspace/USER.md
 - Long-term facts, preferences, decisions, and useful context: update /data/workspace/MEMORY.md
 - Standing instructions about how to work, answer, browse, or behave: update /data/workspace/AGENTS.md carefully, preserving existing rules
-- Recurring task requests such as daily weather, reminders, or summaries: record them in /data/workspace/TASKS.md
+- Recurring task requests such as daily weather, reminders, or summaries: create a real OpenClaw cron/scheduled job when possible, and also record the request and job details in /data/workspace/TASKS.md
 
 After updating a durable file, confirm what you changed and where you stored it.
 
@@ -134,11 +152,20 @@ Do not ask the user to repeat durable information until you have checked the rel
 
 ## Recurring tasks
 
-If the user asks for a scheduled or recurring task, record the request in TASKS.md.
+If the user asks for a scheduled or recurring task, create a real OpenClaw cron/scheduled job when the cron/scheduler tool is available, then record the task, schedule, and job id in TASKS.md.
 
-Do not claim the task will definitely run automatically unless a real scheduler, cron, heartbeat, or my24-7assistant task runner is available and confirmed.
+Do not claim a reminder or scheduled task will run unless a real cron/scheduled job was successfully created. If scheduling is not available or job creation fails, say clearly that you have recorded the request but automatic execution still needs to be enabled.
 
-If scheduling is not available, say clearly that you have recorded the requested task but automatic execution still needs to be enabled.
+## Current information fallback
+
+For current information requests such as weather, news, prices, schedules, live facts, or recent events:
+- Prefer browser/web access when available.
+- If a dedicated API/search/news/weather tool is unavailable or missing a key, do not ask the user for an API key.
+- Fall back to browser/web access or direct page navigation.
+- Do not expose internal missing API-key/tool errors to normal users.
+- If browser/web access also fails, say clearly what you tried and suggest one practical fallback.
+
+For beta tester guidance, remember that my24-7assistant is used through the website/dashboard and assistant chat. Do not invent an app installation step.
 
 ## Browser and web page access
 
@@ -1412,6 +1439,283 @@ function createTuiWebSocketServer(httpServer) {
 
   return wss;
 }
+
+const whatsappLinkState = {
+  proc: null,
+  output: "",
+  startedAt: null,
+  finishedAt: null,
+  exitCode: null,
+  error: null,
+};
+
+function htmlEscape(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function whatsappStatusFromOutput(output) {
+  const text = String(output || "");
+  return {
+    raw: text,
+    connected: /linked,\s*running,\s*connected/i.test(text),
+    linked: /enabled,\s*configured,\s*linked/i.test(text) || /linked/i.test(text),
+    notLinked: /not linked/i.test(text),
+    stopped: /stopped/i.test(text),
+    disconnected: /disconnected/i.test(text),
+    unauthorized: /401|Unauthorized|Connection Failure/i.test(text),
+    restartRequired: /515|restart required/i.test(text),
+  };
+}
+
+async function getWhatsappStatus() {
+  const result = await runCmd(OPENCLAW_NODE, clawArgs(["channels", "status"]));
+  const parsed = whatsappStatusFromOutput(result.output);
+  return {
+    ok: result.code === 0,
+    code: result.code,
+    ...parsed,
+  };
+}
+
+async function resetWhatsappCredentials() {
+  const commands = [
+    `${OPENCLAW_NODE} ${clawArgs(["channels", "logout", "--channel", "whatsapp"]).map((x) => JSON.stringify(x)).join(" ")} || true`,
+    "rm -rf /data/.openclaw/credentials/whatsapp/default",
+    "mkdir -p /data/.openclaw/credentials/whatsapp",
+    "chown -R openclaw:openclaw /data/.openclaw/credentials",
+    "chmod 700 /data/.openclaw/credentials 2>/dev/null || true",
+    "chmod 700 /data/.openclaw/credentials/whatsapp 2>/dev/null || true",
+  ];
+
+  const result = await runCmd("bash", ["-lc", commands.join("\n")]);
+  return result;
+}
+
+function startWhatsappLoginProcess() {
+  if (whatsappLinkState.proc) {
+    return { alreadyRunning: true };
+  }
+
+  whatsappLinkState.output = "";
+  whatsappLinkState.startedAt = new Date().toISOString();
+  whatsappLinkState.finishedAt = null;
+  whatsappLinkState.exitCode = null;
+  whatsappLinkState.error = null;
+
+  const loginCommand = [
+    "OPENCLAW_STATE_DIR=/data/.openclaw",
+    "OPENCLAW_WORKSPACE_DIR=/data/workspace",
+    "OPENCLAW_CONFIG_PATH=/data/.openclaw/openclaw.json",
+    "HOME=/data",
+    OPENCLAW_NODE,
+    clawArgs(["channels", "login", "--channel", "whatsapp"]).map((x) => JSON.stringify(x)).join(" "),
+  ].join(" ");
+
+  const proc = pty.spawn("su", ["-s", "/bin/bash", "openclaw", "-c", loginCommand], {
+    name: "xterm-color",
+    cols: 96,
+    rows: 48,
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      OPENCLAW_STATE_DIR: STATE_DIR,
+      OPENCLAW_WORKSPACE_DIR: WORKSPACE_DIR,
+      OPENCLAW_CONFIG_PATH: configPath(),
+      HOME: "/data",
+      TERM: "xterm-256color",
+    },
+  });
+
+  whatsappLinkState.proc = proc;
+
+  proc.onData((data) => {
+    whatsappLinkState.output += data;
+    if (whatsappLinkState.output.length > 80_000) {
+      whatsappLinkState.output = whatsappLinkState.output.slice(-80_000);
+    }
+  });
+
+  proc.onExit(({ exitCode }) => {
+    whatsappLinkState.exitCode = exitCode;
+    whatsappLinkState.finishedAt = new Date().toISOString();
+    whatsappLinkState.proc = null;
+  });
+
+  return { alreadyRunning: false };
+}
+
+app.get("/my247/whatsapp", (_req, res) => {
+  res.type("html").send(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Connect WhatsApp | my24-7assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7fb; color: #111827; }
+    main { max-width: 920px; margin: 0 auto; padding: 32px 18px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 18px; padding: 22px; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { line-height: 1.5; }
+    button { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; cursor: pointer; margin-right: 8px; margin-top: 8px; }
+    .primary { background: #111827; color: white; }
+    .secondary { background: #e5e7eb; color: #111827; }
+    .danger { background: #fee2e2; color: #991b1b; }
+    .status { padding: 10px 12px; border-radius: 12px; background: #f3f4f6; margin: 14px 0; font-weight: 650; }
+    .ok { background: #dcfce7; color: #166534; }
+    .warn { background: #fef3c7; color: #92400e; }
+    .bad { background: #fee2e2; color: #991b1b; }
+    pre { background: #020617; color: #e5e7eb; padding: 18px; border-radius: 14px; overflow: auto; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; line-height: 1.08; min-height: 220px; }
+    ol { padding-left: 22px; }
+    .small { color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Connect your assistant to WhatsApp</h1>
+    <p>Use this page instead of the OpenClaw Channels page during beta.</p>
+    <ol>
+      <li>Click <strong>Start WhatsApp linking</strong>.</li>
+      <li>On your phone, open <strong>WhatsApp → Linked Devices → Link a Device</strong>.</li>
+      <li>Scan the QR code shown below.</li>
+      <li>Wait until this page says <strong>Connected</strong>.</li>
+    </ol>
+
+    <div id="status" class="status">Checking status…</div>
+
+    <button class="primary" onclick="startLink()">Start WhatsApp linking</button>
+    <button class="secondary" onclick="finalize()">Finalise connection</button>
+    <button class="danger" onclick="resetLink()">Reset WhatsApp link</button>
+
+    <p class="small">If the QR has expired, click Reset, then Start again. Do not use the raw Channels page.</p>
+
+    <h2>QR / setup output</h2>
+    <pre id="output">Waiting…</pre>
+  </div>
+</main>
+<script>
+async function api(path, options) {
+  const res = await fetch(path, options);
+  return await res.json();
+}
+
+function setStatus(data) {
+  const el = document.getElementById("status");
+  if (data.connected) {
+    el.className = "status ok";
+    el.textContent = "WhatsApp connected. You can now message your assistant.";
+  } else if (data.linked) {
+    el.className = "status warn";
+    el.textContent = "WhatsApp linked. Finalising connection…";
+  } else {
+    el.className = "status";
+    el.textContent = "WhatsApp not connected yet.";
+  }
+}
+
+async function refresh() {
+  try {
+    const data = await api("/my247/whatsapp/api/status");
+    setStatus(data.status || data);
+    document.getElementById("output").textContent = data.login?.output || data.status?.raw || "Waiting…";
+    if (data.login?.finishedAt && (data.login.output || "").includes("Linked after restart")) {
+      await finalize();
+    }
+  } catch (e) {
+    document.getElementById("status").className = "status bad";
+    document.getElementById("status").textContent = "Could not check WhatsApp status.";
+  }
+}
+
+async function startLink() {
+  document.getElementById("output").textContent = "Starting WhatsApp linking…";
+  await api("/my247/whatsapp/api/start", { method: "POST" });
+  refresh();
+}
+
+async function resetLink() {
+  if (!confirm("Reset WhatsApp link and remove saved credentials?")) return;
+  document.getElementById("output").textContent = "Resetting…";
+  await api("/my247/whatsapp/api/reset", { method: "POST" });
+  refresh();
+}
+
+async function finalize() {
+  document.getElementById("output").textContent += "\\n\\nFinalising connection…";
+  await api("/my247/whatsapp/api/finalize", { method: "POST" });
+  refresh();
+}
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>`);
+});
+
+app.get("/my247/whatsapp/api/status", async (_req, res) => {
+  try {
+    const status = await getWhatsappStatus();
+    res.json({
+      ok: true,
+      status,
+      login: {
+        running: Boolean(whatsappLinkState.proc),
+        output: whatsappLinkState.output,
+        startedAt: whatsappLinkState.startedAt,
+        finishedAt: whatsappLinkState.finishedAt,
+        exitCode: whatsappLinkState.exitCode,
+        error: whatsappLinkState.error,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.post("/my247/whatsapp/api/reset", async (_req, res) => {
+  try {
+    if (whatsappLinkState.proc) {
+      try { whatsappLinkState.proc.kill(); } catch {}
+      whatsappLinkState.proc = null;
+    }
+    const result = await resetWhatsappCredentials();
+    res.json({ ok: result.code === 0, code: result.code, output: result.output });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.post("/my247/whatsapp/api/start", async (_req, res) => {
+  try {
+    await resetWhatsappCredentials();
+    const started = startWhatsappLoginProcess();
+    res.json({ ok: true, ...started });
+  } catch (error) {
+    whatsappLinkState.error = error.message;
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.post("/my247/whatsapp/api/finalize", async (_req, res) => {
+  try {
+    await runCmd(OPENCLAW_NODE, clawArgs(["gateway", "stop"]));
+    gatewayProc = null;
+    await ensureGatewayRunning();
+    const status = await getWhatsappStatus();
+    res.json({ ok: true, status });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+
 
 const proxy = httpProxy.createProxyServer({
   target: GATEWAY_TARGET,
