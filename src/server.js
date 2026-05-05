@@ -1466,11 +1466,17 @@ function sanitizeTerminalOutput(value) {
 
 function whatsappStatusFromOutput(output) {
   const text = sanitizeTerminalOutput(output);
+  const notLinked = /not linked/i.test(text);
+  const connected = /linked,\s*running,\s*connected/i.test(text);
+  const linked =
+    !notLinked &&
+    (/enabled,\s*configured,\s*linked/i.test(text) || /\blinked\b/i.test(text));
+
   return {
     raw: text,
-    connected: /linked,\s*running,\s*connected/i.test(text),
-    linked: /enabled,\s*configured,\s*linked/i.test(text) || /linked/i.test(text),
-    notLinked: /not linked/i.test(text),
+    connected,
+    linked,
+    notLinked,
     stopped: /stopped/i.test(text),
     disconnected: /disconnected/i.test(text),
     unauthorized: /401|Unauthorized|Connection Failure/i.test(text),
@@ -1627,7 +1633,7 @@ function setStatus(data) {
     el.textContent = "WhatsApp linked. Finalising connection…";
   } else {
     el.className = "status";
-    el.textContent = "WhatsApp not connected yet.";
+    el.textContent = "WhatsApp not linked yet. Click Start WhatsApp linking and prepare to scan the QR code.";
   }
 }
 
