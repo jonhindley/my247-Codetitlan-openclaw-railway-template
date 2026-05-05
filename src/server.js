@@ -1644,7 +1644,7 @@ async function refresh() {
 
     if (status.connected) {
       outputEl.textContent =
-        "WhatsApp connected. You can now message your assistant.\n\n" +
+        "WhatsApp connected. You can now message your assistant.\\n\\n" +
         (status.raw || "");
       return;
     }
