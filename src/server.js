@@ -223,7 +223,7 @@ For scheduled or recurring tasks, use the OpenClaw Gateway scheduler:
 - Add jobs with: openclaw cron add
 
 For one-shot reminders, prefer:
-openclaw cron add --at +10m --message "reminder text" --announce --expect-final --delete-after-run
+openclaw cron add --name "Reminder: short description" --at 10m --message "Reminder: reminder text" --announce --expect-final --delete-after-run --json
 
 For recurring jobs, prefer:
 openclaw cron add --cron "0 7 * * *" --tz "Africa/Johannesburg" --message "task text" --announce --expect-final
@@ -233,6 +233,25 @@ When creating a job:
 2. Confirm it appears in openclaw cron list.
 3. Record the task, schedule, and job id in /data/workspace/TASKS.md.
 4. Tell the user it is scheduled only after the cron job was created successfully.
+
+
+
+Working reminder command pattern:
+
+For web/control-ui reminders:
+openclaw cron add --name "Reminder: short description" --at 3m --message "Reminder: [reminder text]" --announce --expect-final --delete-after-run --json
+
+For WhatsApp reminders when the number is known:
+openclaw cron add --name "Reminder: short description" --at 3m --message "Reminder: [reminder text]" --announce --to "+27662989575" --channel whatsapp --expect-final --delete-after-run --json
+
+Important:
+- --name is required.
+- Use --at 3m, not --at +3m.
+- Use --message, not --system-event, for user-facing reminders.
+- Use --announce for delivery.
+- Use --to and --channel whatsapp for WhatsApp delivery.
+- deliveryStatus: delivered means the reminder was sent.
+- deliveryStatus: not-requested means delivery was not configured correctly.
 
 If cron creation fails:
 1. Read the error.
