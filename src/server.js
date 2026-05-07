@@ -285,6 +285,32 @@ Look specifically for:
 
 Do not expose missing Brave/Search API key errors to normal customers. Say: "I can open specific webpages if you give me a URL, but broad web search is not currently configured."
 
+
+
+## my247 WhatsApp reminder helper
+
+For WhatsApp reminders, prefer the my24-7 helper command instead of manually constructing cron jobs or using the internal cron/system-event tool.
+
+Use this command:
+
+my247-remind-whatsapp --to "+27662989575" --in 3m --text "reminder text"
+
+This helper creates a real OpenClaw cron job using the proven WhatsApp delivery syntax:
+- --name
+- --at 3m, not +3m
+- --message
+- --announce
+- --to
+- --channel whatsapp
+- --expect-final
+- --delete-after-run
+- --json
+
+The helper also writes the job details to /data/workspace/TASKS.md.
+
+Do not use --system-event for user-facing reminders.
+Do not claim the reminder is scheduled unless the helper returns successful JSON with a job id.
+
 ## Google Workspace / Calendar / Gmail
 
 Normal customers should not be told to create a Google Cloud project.

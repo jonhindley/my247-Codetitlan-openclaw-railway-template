@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TO=""
+IN=""
+TEXT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --to) TO="$2"; shift 2 ;;
+    --in) IN="$2"; shift 2 ;;
+    --text) TEXT="$2"; shift 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ -z "$TO" || -z "$IN" || -z "$TEXT" ]]; then
+  echo "Usage: my247-remind-whatsapp --to +276... --in 3m --text \"message\"" >&2
+  exit 2
+fi
+
+export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/data/.openclaw}"
+export OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-/data/workspace}"
+export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-/data/.openclaw/openclaw.json}"
+
+NAME="Reminder: ${TEXT:0:80}"
+MESSAGE="Reminder: $TEXT"
+
+RESULT="$(openclaw cron add \
+  --name "$NAME" \
+  --at "$IN" \
+  --message "$MESSAGE" \
+  --announce \
+  --to "$TO" \
+  --channel whatsapp \
+  --expect-final \
+  --delete-after-run \
+  --json)"
+
+echo "$RESULT"
+
+JOB_ID="$(printf '%s\n' "$RESULT" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).id||"")}catch{}})')"
+
+{
+  echo ""
+  echo "## Scheduled WhatsApp reminder"
+  echo ""
+  echo "- Created: $(date -Iseconds)"
+  echo "- Job ID: ${JOB_ID:-unknown}"
+  echo "- To: $TO"
+  echo "- In: $IN"
+  echo "- Message: $MESSAGE"
+} >> /data/workspace/TASKS.md
