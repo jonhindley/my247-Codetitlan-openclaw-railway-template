@@ -405,8 +405,10 @@ Calendar read requests:
 - Do not tell the user to create a Google Cloud project.
 
 Calendar write requests:
-- For create, update, move, or delete, first repeat the exact calendar change and ask the user to confirm.
-- Only run create/update/delete with --confirmed after explicit user confirmation.
+- A clear user instruction counts as confirmation.
+- Do not ask for a second confirmation for straightforward requests, such as adding a clearly specified event or moving a clearly identified event.
+- Use --confirmed when the user has clearly requested the action.
+- Ask for clarification or confirmation only when the request is ambiguous, destructive, affects multiple events, has missing/uncertain date/time/title details, or could match multiple events.
 - If access is read-only, explain that write access requires reconnecting with calendar_events permission.
 
 Gmail is not connected yet. For Gmail requests, say:
