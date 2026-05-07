@@ -289,7 +289,7 @@ Do not expose missing Brave/Search API key errors to normal customers. Say: "I c
 
 ## my247 WhatsApp reminder helper
 
-For WhatsApp reminders, prefer the my24-7 helper command instead of manually constructing cron jobs or using the internal cron/system-event tool.
+For WhatsApp reminders, you MUST use the my24-7 helper command instead of manually constructing cron jobs or using the internal cron/system-event tool.
 
 Use this command:
 
@@ -308,8 +308,8 @@ This helper creates a real OpenClaw cron job using the proven WhatsApp delivery 
 
 The helper also writes the job details to /data/workspace/TASKS.md.
 
-Do not use --system-event for user-facing reminders.
-Do not claim the reminder is scheduled unless the helper returns successful JSON with a job id.
+Do not use --system-event for user-facing reminders. Do not create internal systemEvent reminders for WhatsApp delivery.
+Do not claim the reminder is scheduled unless the helper returns successful JSON with a job id. If you did not run my247-remind-whatsapp, the WhatsApp reminder is not scheduled.
 
 ## Google Workspace / Calendar / Gmail
 
