@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
+import urllib.error
+
+DEFAULT_BASE = "https://my247-provisioner-production.up.railway.app"
+
+def eprint(*args):
+    print(*args, file=sys.stderr)
+
+def get_email(args):
+    email = (
+        args.email
+        or os.environ.get("MY247_CUSTOMER_EMAIL")
+        or os.environ.get("MY247_EMAIL")
+        or os.environ.get("CUSTOMER_EMAIL")
+        or ""
+    ).strip().lower()
+
+    if not email or "@" not in email:
+        raise SystemExit("Missing --email or MY247_CUSTOMER_EMAIL")
+
+    return email
+
+def get_base():
+    return os.environ.get("MY247_GOOGLE_API_BASE", DEFAULT_BASE).rstrip("/")
+
+def get_token(required=True):
+    token = os.environ.get("MY247_GOOGLE_API_TOKEN", "").strip()
+    if required and not token:
+        raise SystemExit("Missing MY247_GOOGLE_API_TOKEN")
+    return token
+
+def request(method, path, token_required=True, query=None, body=None):
+    base = get_base()
+    url = base + path
+
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+
+    headers = {
+        "accept": "application/json",
+    }
+
+    token = get_token(token_required)
+    if token:
+        headers["x-my247-google-token"] = token
+
+    data = None
+    if body is not None:
+        headers["content-type"] = "application/json"
+        data = json.dumps(body).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+            try:
+                print(json.dumps(json.loads(raw), indent=2))
+            except Exception:
+                print(raw)
+    except urllib.error.HTTPError as err:
+        raw = err.read().decode("utf-8", errors="replace")
+        eprint(f"HTTP {err.code}: {raw}")
+        raise SystemExit(1)
+
+def cmd_connect_link(args):
+    email = get_email(args)
+    mode = args.mode or "calendar_events"
+
+    if mode not in ("calendar_readonly", "calendar_events"):
+        raise SystemExit("--mode must be calendar_readonly or calendar_events")
+
+    query = urllib.parse.urlencode({
+        "email": email,
+        "mode": mode,
+    })
+
+    print(f"{get_base()}/my247/google/start?{query}")
+
+def cmd_status(args):
+    email = get_email(args)
+    request("GET", "/my247/google/status", query={"email": email})
+
+def cmd_list(args):
+    email = get_email(args)
+
+    query = {
+        "email": email,
+        "maxResults": str(args.max_results),
+    }
+
+    if args.from_time:
+        query["from"] = args.from_time
+    if args.to_time:
+        query["to"] = args.to_time
+
+    request("GET", "/my247/google/calendar/events", query=query)
+
+def cmd_create(args):
+    email = get_email(args)
+
+    if not args.confirmed:
+        raise SystemExit("Calendar create requires --confirmed after explicit user confirmation")
+
+    body = {
+        "email": email,
+        "title": args.title,
+        "start": args.start,
+        "end": args.end,
+        "timezone": args.timezone,
+        "location": args.location or "",
+        "description": args.description or "",
+        "confirmed": True,
+    }
+
+    request("POST", "/my247/google/calendar/events", body=body)
+
+def cmd_update(args):
+    email = get_email(args)
+
+    if not args.confirmed:
+        raise SystemExit("Calendar update requires --confirmed after explicit user confirmation")
+
+    body = {
+        "email": email,
+        "timezone": args.timezone,
+        "confirmed": True,
+    }
+
+    if args.title is not None:
+        body["title"] = args.title
+    if args.start is not None:
+        body["start"] = args.start
+    if args.end is not None:
+        body["end"] = args.end
+    if args.location is not None:
+        body["location"] = args.location
+    if args.description is not None:
+        body["description"] = args.description
+
+    request("PATCH", f"/my247/google/calendar/events/{urllib.parse.quote(args.event_id)}", body=body)
+
+def cmd_delete(args):
+    email = get_email(args)
+
+    if not args.confirmed:
+        raise SystemExit("Calendar delete requires --confirmed after explicit user confirmation")
+
+    body = {
+        "email": email,
+        "confirmed": True,
+    }
+
+    request("DELETE", f"/my247/google/calendar/events/{urllib.parse.quote(args.event_id)}", body=body)
+
+def main():
+    parser = argparse.ArgumentParser(description="my24-7assistant Google Calendar helper")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    common_email_help = "Customer/calendar email. Defaults to MY247_CUSTOMER_EMAIL."
+
+    p = sub.add_parser("connect-link")
+    p.add_argument("--email", help=common_email_help)
+    p.add_argument("--mode", choices=["calendar_readonly", "calendar_events"], default="calendar_events")
+    p.set_defaults(func=cmd_connect_link)
+
+    p = sub.add_parser("status")
+    p.add_argument("--email", help=common_email_help)
+    p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("list")
+    p.add_argument("--email", help=common_email_help)
+    p.add_argument("--from", dest="from_time", help="ISO datetime, e.g. 2026-05-08T00:00:00+02:00")
+    p.add_argument("--to", dest="to_time", help="ISO datetime, e.g. 2026-05-09T00:00:00+02:00")
+    p.add_argument("--max-results", type=int, default=20)
+    p.set_defaults(func=cmd_list)
+
+    p = sub.add_parser("create")
+    p.add_argument("--email", help=common_email_help)
+    p.add_argument("--title", required=True)
+    p.add_argument("--start", required=True)
+    p.add_argument("--end", required=True)
+    p.add_argument("--timezone", default="Africa/Johannesburg")
+    p.add_argument("--location")
+    p.add_argument("--description")
+    p.add_argument("--confirmed", action="store_true")
+    p.set_defaults(func=cmd_create)
+
+    p = sub.add_parser("update")
+    p.add_argument("--email", help=common_email_help)
+    p.add_argument("--event-id", required=True)
+    p.add_argument("--title")
+    p.add_argument("--start")
+    p.add_argument("--end")
+    p.add_argument("--timezone", default="Africa/Johannesburg")
+    p.add_argument("--location")
+    p.add_argument("--description")
+    p.add_argument("--confirmed", action="store_true")
+    p.set_defaults(func=cmd_update)
+
+    p = sub.add_parser("delete")
+    p.add_argument("--email", help=common_email_help)
+    p.add_argument("--event-id", required=True)
+    p.add_argument("--confirmed", action="store_true")
+    p.set_defaults(func=cmd_delete)
+
+    args = parser.parse_args()
+    args.func(args)
+
+if __name__ == "__main__":
+    main()
