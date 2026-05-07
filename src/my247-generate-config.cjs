@@ -576,6 +576,13 @@ const config = {
   },
   tools: {
     profile: env("MY247_TOOLS_PROFILE", "coding"),
+    web: {
+      search: {
+        enabled: env("MY247_WEB_SEARCH_ENABLED", "true") !== "false",
+        provider: env("MY247_WEB_SEARCH_PROVIDER", "brave"),
+        apiKey: `\${${env("MY247_WEB_SEARCH_API_KEY_ENV", "BRAVE_API_KEY")}}`,
+      },
+    },
   },
   messages: {
     ackReactionScope: env("MY247_ACK_REACTION_SCOPE", "group-mentions"),
