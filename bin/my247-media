@@ -39,9 +39,27 @@ def resolve_target(target):
     return p
 
 def call_vision(image_path: Path, prompt: str):
-    base_url = (os.environ.get("MY247_PROVIDER_BASE_URL") or "").rstrip("/")
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    model = os.environ.get("MY247_MODEL_ID", "gpt-4o-mini")
+    # Vision can use a dedicated my247 platform route, or fall back to the
+    # customer's normal provider route when that model supports vision.
+    base_url = (
+        os.environ.get("MY247_VISION_PROVIDER_BASE_URL")
+        or os.environ.get("MY247_PROVIDER_BASE_URL")
+        or ""
+    ).rstrip("/")
+
+    api_key_env = os.environ.get("MY247_VISION_API_KEY_ENV", "OPENAI_API_KEY")
+    api_key = (
+        os.environ.get("MY247_VISION_API_KEY")
+        or os.environ.get(api_key_env)
+        or os.environ.get("OPENAI_API_KEY")
+        or ""
+    )
+
+    model = (
+        os.environ.get("MY247_VISION_MODEL_ID")
+        or os.environ.get("MY247_MODEL_ID")
+        or "gpt-4o-mini"
+    )
 
     if not base_url:
         raise SystemExit("Missing MY247_PROVIDER_BASE_URL")
