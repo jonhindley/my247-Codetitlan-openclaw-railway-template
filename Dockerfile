@@ -72,7 +72,8 @@ COPY --chmod=755 entrypoint.sh ./entrypoint.sh
 
 # my24-7assistant helper commands
 RUN install -m 0755 /app/bin/my247-remind-whatsapp /usr/local/bin/my247-remind-whatsapp \
-  && install -m 0755 /app/bin/my247-calendar /usr/local/bin/my247-calendar
+  && install -m 0755 /app/bin/my247-calendar /usr/local/bin/my247-calendar \
+  && install -m 0755 /app/bin/my247-media /usr/local/bin/my247-media
 
 RUN useradd -m -s /bin/bash openclaw \
   && chown -R openclaw:openclaw /app \
